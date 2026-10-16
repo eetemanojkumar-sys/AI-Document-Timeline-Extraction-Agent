@@ -6,12 +6,14 @@ from google import genai
 from google.genai import types
 
 from app.schemas import TimelineEvent, TimelineResponse
+from app.tools.date_calculator import calculate_relative_date
 
 
 SYSTEM_INSTRUCTIONS = """
 You extract events and dates from document text.
 Use the supplied reference date to interpret relative phrases. Do not invent facts.
-If a date cannot be resolved reliably, use date=null and explain the ambiguity.
+When a relative date can be calculated from a clear anchor date and duration, call the calculate_relative_date tool instead of doing date arithmetic mentally.
+Pass the anchor as YYYY-MM-DD and the duration as an integer amount with unit days, weeks, months, or years. If the anchor or duration is ambiguous, use date=null and explain the ambiguity.
 Return JSON with keys summary, events, warnings.
 Each event must have event, date (YYYY-MM-DD or null), evidence,
 confidence (high/medium/low), and notes.
@@ -48,6 +50,7 @@ def extract_timeline(
             system_instruction=SYSTEM_INSTRUCTIONS,
             response_mime_type="application/json",
             temperature=0.1,
+            tools=[calculate_relative_date],
         ),
     )
 
