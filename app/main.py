@@ -18,7 +18,7 @@ from docx import Document
 
 from app.agent import extract_timeline
 from app.schemas import TimelineRequest, TimelineResponse
-from app.storage import upload_original, save_result, get_result
+from app.storage import upload_original, delete_original, save_result, get_result
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -476,23 +476,6 @@ async def upload_document(
         document_id = str(uuid4())
         s3_key = f"uploads/{document_id}/{filename}"
 
-        # Store the original file in S3.
-        try:
-            upload_original(
-                key=s3_key,
-                content=content,
-                content_type=(
-                    file.content_type or "application/octet-stream"
-                ),
-                document_id=document_id,
-            )
-        except Exception as exc:
-            logger.exception("S3 upload failed")
-            raise HTTPException(
-                status_code=502,
-                detail="Could not upload the original document to S3.",
-            ) from exc
-
         # Run Gemini extraction.
         try:
             result = extract_timeline(text, reference_date)
@@ -524,6 +507,23 @@ async def upload_document(
 
         result_data = result.model_dump(mode="json")
 
+        # Only upload the original after AI extraction succeeds.
+        try:
+            upload_original(
+                key=s3_key,
+                content=content,
+                content_type=(
+                    file.content_type or "application/octet-stream"
+                ),
+                document_id=document_id,
+            )
+        except Exception as exc:
+            logger.exception("S3 upload failed")
+            raise HTTPException(
+                status_code=502,
+                detail="Could not upload the original document to S3.",
+            ) from exc
+
         # Save extracted results in DynamoDB.
         try:
             save_result({
@@ -539,6 +539,11 @@ async def upload_document(
             })
         except Exception as exc:
             logger.exception("DynamoDB save failed")
+            # Best-effort cleanup prevents an unreferenced S3 object.
+            try:
+                delete_original(s3_key)
+            except Exception:
+                logger.exception("S3 cleanup failed after DynamoDB save failure")
             raise HTTPException(
                 status_code=502,
                 detail=(
