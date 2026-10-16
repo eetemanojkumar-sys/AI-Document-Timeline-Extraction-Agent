@@ -33,7 +33,7 @@ def extract_timeline(
     date.fromisoformat(ref_date)
 
     client = genai.Client(api_key=api_key)
-    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
     prompt = (
         f"Reference date: {ref_date}\n\n"
