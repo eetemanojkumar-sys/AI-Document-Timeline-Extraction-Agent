@@ -1,75 +1,83 @@
 # AI Document Timeline Extraction Agent
 
-A starter portfolio project that extracts events and dates from document text using a Gemini API model. It runs as a Python FastAPI application and can be containerized and deployed to an EC2 Ubuntu instance.
+An AI-powered document processing application that extracts events, dates, evidence, and chronological timelines from uploaded documents. Built with FastAPI and the Gemini API, with AWS storage and retrieval.
+
+## Features
+
+- Upload PDF, TXT, and DOCX documents through a browser interface.
+- Extract document text and generate a structured timeline using Gemini.
+- Optionally supply a reference date to help interpret relative dates.
+- Store original uploaded files in Amazon S3.
+- Persist extracted timeline results in Amazon DynamoDB.
+- Retrieve a previously processed result using its document ID.
+- REST API and interactive API documentation via FastAPI.
 
 ## Architecture
 
-Browser → FastAPI on EC2 → Python AI agent → Gemini API
+Browser → FastAPI on Amazon EC2 (Ubuntu) → document text extraction → Gemini API  
+Original document → Amazon S3  
+Timeline result → Amazon DynamoDB
 
-Optional future integrations: S3 for documents, DynamoDB for results, Jenkins for CI/CD, Terraform for infrastructure.
+## Technology Stack
 
-This project does **not** use Amazon Bedrock or AWS Lambda.
+- Python, FastAPI, Uvicorn
+- Gemini API
+- AWS EC2, Amazon S3, Amazon DynamoDB, IAM instance role
+- PDF/TXT/DOCX parsing with pypdf and python-docx
+- Git and GitHub
 
-## Requirements
+## Configuration
 
-- Python 3.11+
-- Gemini API key from https://aistudio.google.com/apikey
-- Network access to the Gemini API
-- Docker (optional)
+Python 3.11+ is recommended. Create a virtual environment and install dependencies:
 
-Free-tier access, model availability, rate limits, and pricing depend on current provider terms and your account.
-
-## Run locally on Windows PowerShell
-
-```powershell
+```bash
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Edit `.env` and set `GEMINI_API_KEY` to your private key. Never commit `.env`.
+Edit `.env` and set `GEMINI_API_KEY`. Configure `AWS_REGION`, `S3_BUCKET`, and `DYNAMODB_TABLE` for your AWS resources. Use an EC2 IAM role with only the required S3 and DynamoDB permissions; avoid storing long-lived AWS credentials in the project.
 
-Start the server:
+Never commit `.env` or API keys.
 
-```powershell
+## Run locally
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000 or http://127.0.0.1:8000/docs.
+Open http://127.0.0.1:8000 for the web interface and http://127.0.0.1:8000/docs for the API documentation.
 
-## Test
+## Run on EC2
 
-```powershell
-pytest -q
-```
-
-## Run with Docker
-
-Create `.env` first, then run:
+After configuring the environment and the EC2 instance role, run:
 
 ```bash
-docker compose up --build -d
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Open http://localhost:8000.
+Open the instance's public address on port 8000 if the security group permits access. This deployment uses HTTP and does not include application authentication; use sample or non-sensitive documents and restrict inbound access while testing.
 
-## API example
+## API Endpoints
 
-POST `/api/timeline`
+- `GET /` — browser interface
+- `GET /health` — health check
+- `POST /api/timeline` — extract a timeline from supplied text
+- `POST /api/documents/upload` — upload a PDF, TXT, or DOCX file and process it
+- `GET /api/documents/{document_id}` — retrieve a saved result
+
+## Example timeline request
 
 ```json
 {
   "reference_date": "2026-10-16",
-  "text": "The project started on October 1, 2026. Testing will begin two weeks later, and deployment is planned five days after testing begins."
+  "text": "The project started on October 1, 2026. Testing will begin two weeks later."
 }
 ```
 
-## Security notes
+## Important notes
 
-- Never put real API keys in source code or GitHub.
-- Keep `.env` out of version control.
-- For EC2, expose only required ports and use HTTPS through a reverse proxy or load balancer for public deployment.
-- Use an EC2 IAM role for AWS service access rather than storing long-lived AWS credentials on the instance.
-- This starter has no authentication or file-upload endpoint. Do not expose it publicly with sensitive documents until authentication, rate limiting, upload validation, and privacy controls are added.
-- LLM output is probabilistic. Verify dates when source text is ambiguous.
+- Model availability, rate limits, and pricing depend on the provider and account. The default model is `gemini-3.6-flash`; set `GEMINI_MODEL` in `.env` to override it.
+- AI-generated dates can be uncertain. Review evidence and warnings before relying on extracted timelines.
+- Add authentication, rate limiting, and appropriate privacy controls before accepting sensitive or public user uploads.
