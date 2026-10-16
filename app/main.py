@@ -388,7 +388,7 @@ def timeline(request: TimelineRequest):
 # --------------------------------------------------
 
 @app.post("/api/documents/upload")
-async def upload_document(
+def upload_document(
     file: UploadFile = File(...),
     reference_date: str | None = Form(default=None),
 ):
@@ -401,7 +401,7 @@ async def upload_document(
             detail="Supported formats: TXT, PDF, DOCX",
         )
 
-    content = await file.read(5 * 1024 * 1024 + 1)
+    content = file.file.read(5 * 1024 * 1024 + 1)
 
     try:
         if not content:
@@ -559,7 +559,7 @@ async def upload_document(
         }
 
     finally:
-        await file.close()
+        file.file.close()
 
 
 # --------------------------------------------------
