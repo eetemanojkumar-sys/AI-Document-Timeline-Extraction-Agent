@@ -495,7 +495,6 @@ def upload_document(
                     status_code=503,
                     detail=(
                         "Gemini is temporarily unavailable or rate-limited. "
-                        "Your original file may already be in S3. "
                         "Please retry later."
                     ),
                 ) from exc
