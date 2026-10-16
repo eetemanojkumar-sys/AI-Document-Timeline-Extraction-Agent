@@ -1,5 +1,4 @@
 import os
-import os
 
 import boto3
 
@@ -32,6 +31,13 @@ def upload_original(
         ServerSideEncryption="AES256",
         Metadata={"document-id": document_id} if document_id else {},
     )
+
+
+def delete_original(key: str) -> None:
+    """Best-effort cleanup for an original file whose result could not be saved."""
+    region, bucket, _ = _settings()
+    s3 = boto3.client("s3", region_name=region)
+    s3.delete_object(Bucket=bucket, Key=key)
 
 
 def save_result(item: dict) -> None:
